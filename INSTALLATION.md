@@ -100,7 +100,7 @@ Upload this to the ESP. Give it 30–90 seconds to discover channels (longer if 
 ---
 ## Step 2: Publish YAML Suggestion Chunks
 In Home Assistant:
-1. Open Developer Tools → Services.
+1. Open Developer Tools → Actions.
 2. Call `esphome.wavin_gen_wavin_publish_yaml_text_sensors`.
 3. If you added the readiness binary sensor, wait until it is ON before calling (optional, but avoids partial data).
 
