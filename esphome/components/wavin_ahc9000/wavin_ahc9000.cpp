@@ -1194,19 +1194,31 @@ void WavinZoneClimate::dump_config() { LOG_CLIMATE("  ", "Wavin Zone Climate (mi
 climate::ClimateTraits WavinZoneClimate::traits() {
   climate::ClimateTraits t;
   t.set_supported_modes({climate::CLIMATE_MODE_HEAT, climate::CLIMATE_MODE_OFF});
+  // Enable feature flags using the new API when available to avoid deprecation warnings
+#ifdef CLIMATE_SUPPORTS_CURRENT_TEMPERATURE
+  uint32_t feature_flags = climate::CLIMATE_SUPPORTS_CURRENT_TEMPERATURE | climate::CLIMATE_SUPPORTS_ACTION;
+#else
   t.set_supports_current_temperature(true);
   t.set_supports_action(true);
+#endif
   // Default visual bounds
   float vmin = 5.0f;
   float vmax = 35.0f;
   // For comfort climates (using floor temperature), adopt current floor min/max when available
   if (this->single_channel_set_ && this->use_floor_temperature_) {
+#ifdef CLIMATE_SUPPORTS_CURRENT_TEMPERATURE
+    feature_flags |= climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE;
+#else
     t.set_supports_two_point_target_temperature(true);
+#endif
     float fmin = this->parent_->get_channel_floor_min_temp(this->single_channel_);
     float fmax = this->parent_->get_channel_floor_max_temp(this->single_channel_);
     if (!std::isnan(fmin)) vmin = fmin;
     if (!std::isnan(fmax)) vmax = fmax;
   }
+#ifdef CLIMATE_SUPPORTS_CURRENT_TEMPERATURE
+  t.add_feature_flags(feature_flags);
+#endif
   t.set_visual_min_temperature(vmin);
   t.set_visual_max_temperature(vmax);
   t.set_visual_temperature_step(0.5f);
