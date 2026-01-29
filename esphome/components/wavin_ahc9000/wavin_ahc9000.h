@@ -52,6 +52,9 @@ class WavinAHC9000 : public PollingComponent, public uart::UARTDevice {
   // New read-only floor limit sensors
   void add_channel_floor_min_temperature_sensor(uint8_t ch, sensor::Sensor *s);
   void add_channel_floor_max_temperature_sensor(uint8_t ch, sensor::Sensor *s);
+  // New RSSI sensors
+  void add_channel_rssi_element_sensor(uint8_t ch, sensor::Sensor *s);
+  void add_channel_rssi_controller_sensor(uint8_t ch, sensor::Sensor *s);
   void add_channel_child_lock_switch(uint8_t ch, switch_::Switch *s) { this->child_lock_switches_[ch] = s; }
   void add_active_channel(uint8_t ch);
 
@@ -92,6 +95,9 @@ class WavinAHC9000 : public PollingComponent, public uart::UARTDevice {
   std::string get_yaml_floor_temperature_chunk(uint8_t start, uint8_t count) const;
   std::string get_yaml_floor_min_temperature_chunk(uint8_t start, uint8_t count) const;
   std::string get_yaml_floor_max_temperature_chunk(uint8_t start, uint8_t count) const;
+  // New: RSSI YAML chunks
+  std::string get_yaml_rssi_element_chunk(uint8_t start, uint8_t count) const;
+  std::string get_yaml_rssi_controller_chunk(uint8_t start, uint8_t count) const;
   // New: child lock switch YAML chunk (returns switch entities)
   std::string get_yaml_child_lock_chunk(uint8_t start, uint8_t count) const;
   uint8_t get_yaml_active_count() const { return (uint8_t) this->yaml_active_channels_.size(); }
@@ -108,6 +114,8 @@ class WavinAHC9000 : public PollingComponent, public uart::UARTDevice {
   float get_channel_floor_temp(uint8_t channel) const;
   float get_channel_floor_min_temp(uint8_t channel) const;
   float get_channel_floor_max_temp(uint8_t channel) const;
+  float get_channel_rssi_element(uint8_t channel) const;
+  float get_channel_rssi_controller(uint8_t channel) const;
   climate::ClimateMode get_channel_mode(uint8_t channel) const;
   climate::ClimateAction get_channel_action(uint8_t channel) const;
 
@@ -123,6 +131,8 @@ class WavinAHC9000 : public PollingComponent, public uart::UARTDevice {
   // Helpers
   float raw_to_c(float raw) const { return raw / this->temp_divisor_; }
   uint16_t c_to_raw(float c) const { return static_cast<uint16_t>(c * this->temp_divisor_ + 0.5f); }
+  // RSSI conversion: raw signed byte to dBm (0 = -74 dBm, step = 0.5 dBm)
+  float rssi_raw_to_dbm(int8_t raw) const { return -74.0f + (raw * 0.5f); }
 
   // Simple cache per channel
   struct ChannelState {
@@ -132,6 +142,9 @@ class WavinAHC9000 : public PollingComponent, public uart::UARTDevice {
     float floor_min_c{NAN};
     float floor_max_c{NAN};
     float setpoint_c{NAN};
+    // RSSI values in dBm
+    float rssi_element_dbm{NAN};
+    float rssi_controller_dbm{NAN};
     climate::ClimateMode mode{climate::CLIMATE_MODE_HEAT};
     climate::ClimateAction action{climate::CLIMATE_ACTION_OFF};
     uint8_t battery_pct{255}; // 0..100; 255=unknown
@@ -150,6 +163,9 @@ class WavinAHC9000 : public PollingComponent, public uart::UARTDevice {
   // New read-only floor limit sensor maps
   std::map<uint8_t, sensor::Sensor *> floor_min_temperature_sensors_;
   std::map<uint8_t, sensor::Sensor *> floor_max_temperature_sensors_;
+  // New RSSI sensor maps
+  std::map<uint8_t, sensor::Sensor *> rssi_element_sensors_;
+  std::map<uint8_t, sensor::Sensor *> rssi_controller_sensors_;
   std::map<uint8_t, sensor::Sensor *> comfort_setpoint_sensors_;
   std::map<uint8_t, switch_::Switch *> child_lock_switches_;
   binary_sensor::BinarySensor *yaml_ready_binary_sensor_{nullptr};
@@ -206,6 +222,7 @@ class WavinAHC9000 : public PollingComponent, public uart::UARTDevice {
 
   static constexpr uint8_t ELEM_AIR_TEMPERATURE = 0x04; // index within block
   static constexpr uint8_t ELEM_FLOOR_TEMPERATURE = 0x05; // index for floor probe
+  static constexpr uint8_t ELEM_RSSI = 0x09; // RSSI register (bits 15-8: element side, 7-0: controller side)
   static constexpr uint8_t ELEM_BATTERY_STATUS = 0x0A;  // not used yet
 
   static constexpr uint8_t PACKED_MANUAL_TEMPERATURE = 0x00;
@@ -273,6 +290,14 @@ inline void WavinAHC9000::add_channel_floor_max_temperature_sensor(uint8_t ch, s
   this->floor_max_temperature_sensors_[ch] = s;
 }
 
+inline void WavinAHC9000::add_channel_rssi_element_sensor(uint8_t ch, sensor::Sensor *s) {
+  this->rssi_element_sensors_[ch] = s;
+}
+
+inline void WavinAHC9000::add_channel_rssi_controller_sensor(uint8_t ch, sensor::Sensor *s) {
+  this->rssi_controller_sensors_[ch] = s;
+}
+
 // numeric yaml_ready sensor removed
 
 class WavinZoneClimate : public climate::Climate, public Component {
@@ -309,16 +334,3 @@ class WavinZoneClimate : public climate::Climate, public Component {
 
 }  // namespace wavin_ahc9000
 }  // namespace esphome
-
-// --- Child lock extension placeholders (to integrate in subsequent patch) ---
-// NOTE: Full integration attempted earlier but patching context mismatched. The following
-// defines will be merged into the class on next edit cycle.
-// Child lock bit observed: PACKED_CONFIGURATION (index 0x07) changes from 0x4000 to 0x4800 when enabled => bit 0x0800.
-// Planned additions inside WavinAHC9000:
-//   - bool is_channel_child_locked(uint8_t ch) const;
-//   - void write_channel_child_lock(uint8_t ch, bool enable);
-//   - ChannelState::bool child_lock; // per-channel cache
-//   - std::map<uint8_t, switch_::Switch*> child_lock_switches_;
-//   - static constexpr uint16_t PACKED_CONFIGURATION_CHILD_LOCK_MASK = 0x0800;
-// Parsing: when reading PACKED_CONFIGURATION, set child_lock = (raw_cfg & mask) != 0.
-// Writing: read-modify-write preserving mode bits and baseline 0x4000 prefix.
