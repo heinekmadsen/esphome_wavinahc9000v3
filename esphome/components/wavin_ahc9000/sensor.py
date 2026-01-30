@@ -7,28 +7,37 @@ from esphome.const import (
     ICON_BATTERY,
     DEVICE_CLASS_TEMPERATURE,
     UNIT_CELSIUS,
+    DEVICE_CLASS_SIGNAL_STRENGTH,
+    UNIT_DECIBEL_MILLIWATT,
 )
-
 from . import WavinAHC9000
 
 CONF_PARENT_ID = "wavin_ahc9000_id"
 CONF_CHANNEL = "channel"
-
-
 CONF_TYPE = "type"
 
 CONFIG_SCHEMA = sensor.sensor_schema().extend(
     {
         cv.GenerateID(CONF_PARENT_ID): cv.use_id(WavinAHC9000),
         cv.Required(CONF_CHANNEL): cv.int_range(min=1, max=16),
-    cv.Required(CONF_TYPE): cv.one_of("battery", "temperature", "comfort_setpoint", "floor_temperature", "floor_min_temperature", "floor_max_temperature", lower=True),
+        cv.Required(CONF_TYPE): cv.one_of(
+            "battery", 
+            "temperature", 
+            "comfort_setpoint", 
+            "floor_temperature", 
+            "floor_min_temperature", 
+            "floor_max_temperature",
+            "rssi_element",
+            "rssi_controller",
+            lower=True
+        ),
     }
 )
-
 
 async def to_code(config):
     hub = await cg.get_variable(config[CONF_PARENT_ID])
     sens = await sensor.new_sensor(config)
+    
     # Apply defaults based on sensor type
     if config[CONF_TYPE] == "battery":
         cg.add(sens.set_device_class(DEVICE_CLASS_BATTERY))
@@ -36,12 +45,25 @@ async def to_code(config):
         cg.add(sens.set_icon(ICON_BATTERY))
         cg.add(sens.set_accuracy_decimals(0))
         cg.add(hub.add_channel_battery_sensor(config[CONF_CHANNEL], sens))
-    # yaml_ready numeric sensor removed in favor of binary_sensor platform
+    
+    elif config[CONF_TYPE] in ["rssi_element", "rssi_controller"]:
+        # RSSI sensors - signal strength in dBm
+        cg.add(sens.set_device_class(DEVICE_CLASS_SIGNAL_STRENGTH))
+        cg.add(sens.set_unit_of_measurement(UNIT_DECIBEL_MILLIWATT))
+        cg.add(sens.set_icon("mdi:wifi"))
+        cg.add(sens.set_accuracy_decimals(1))
+        
+        if config[CONF_TYPE] == "rssi_element":
+            cg.add(hub.add_channel_rssi_element_sensor(config[CONF_CHANNEL], sens))
+        else:  # rssi_controller
+            cg.add(hub.add_channel_rssi_controller_sensor(config[CONF_CHANNEL], sens))
+    
     else:
-        # temperature & comfort_setpoint share temperature meta
+        # temperature & comfort_setpoint & floor temps share temperature meta
         cg.add(sens.set_device_class(DEVICE_CLASS_TEMPERATURE))
         cg.add(sens.set_unit_of_measurement(UNIT_CELSIUS))
         cg.add(sens.set_accuracy_decimals(1))
+        
         if config[CONF_TYPE] == "comfort_setpoint":
             cg.add(hub.add_channel_comfort_setpoint_sensor(config[CONF_CHANNEL], sens))
         elif config[CONF_TYPE] == "floor_temperature":
@@ -50,6 +72,7 @@ async def to_code(config):
             cg.add(hub.add_channel_floor_min_temperature_sensor(config[CONF_CHANNEL], sens))
         elif config[CONF_TYPE] == "floor_max_temperature":
             cg.add(hub.add_channel_floor_max_temperature_sensor(config[CONF_CHANNEL], sens))
-        else:
+        else:  # temperature
             cg.add(hub.add_channel_temperature_sensor(config[CONF_CHANNEL], sens))
+    
     cg.add(hub.add_active_channel(config[CONF_CHANNEL]))
