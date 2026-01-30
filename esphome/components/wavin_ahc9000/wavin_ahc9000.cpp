@@ -683,14 +683,6 @@ void WavinAHC9000::generate_yaml_suggestion() {
             uint16_t raw = regs[ELEM_BATTERY_STATUS];
             uint8_t steps = (raw > 10) ? 10 : (uint8_t) raw;
             st.battery_pct = (uint8_t) (steps * 10);
-// Read RSSI if available
-          if (regs.size() > ELEM_RSSI) {
-            uint16_t rssi_raw = regs[ELEM_RSSI];
-            int8_t rssi_element = (int8_t)((rssi_raw >> 8) & 0xFF);
-            int8_t rssi_controller = (int8_t)(rssi_raw & 0xFF);
-            st.rssi_element_dbm = this->rssi_raw_to_dbm(rssi_element);
-            st.rssi_controller_dbm = this->rssi_raw_to_dbm(rssi_controller);
-          }            
           }
         }
       }
@@ -977,36 +969,6 @@ static std::string build_child_lock_yaml_for(const WavinAHC9000 *parent, const s
   return y;
 }
 
-static std::string build_rssi_element_yaml_for(const WavinAHC9000 *parent, const std::vector<uint8_t> &chs) {
-  std::string y;
-  if (chs.empty()) return y;
-  for (auto ch : chs) {
-    std::string fname = parent->get_channel_friendly_name(ch);
-    if (fname.empty()) fname = "Zone " + std::to_string((int) ch);
-    y += "- platform: wavin_ahc9000\n";
-    y += "  wavin_ahc9000_id: wavin\n";
-    y += "  name: \"" + fname + " RSSI Element\"\n";
-    y += "  channel: " + std::to_string((int) ch) + "\n";
-    y += "  type: rssi_element\n";
-  }
-  return y;
-}
-
-static std::string build_rssi_controller_yaml_for(const WavinAHC9000 *parent, const std::vector<uint8_t> &chs) {
-  std::string y;
-  if (chs.empty()) return y;
-  for (auto ch : chs) {
-    std::string fname = parent->get_channel_friendly_name(ch);
-    if (fname.empty()) fname = "Zone " + std::to_string((int) ch);
-    y += "- platform: wavin_ahc9000\n";
-    y += "  wavin_ahc9000_id: wavin\n";
-    y += "  name: \"" + fname + " RSSI Controller\"\n";
-    y += "  channel: " + std::to_string((int) ch) + "\n";
-    y += "  type: rssi_controller\n";
-  }
-  return y;
-}
-
 static std::string build_group_climate_yaml_for(const WavinAHC9000 *parent, const std::vector<std::vector<uint8_t>> &groups) {
   std::string y;
   for (auto &g : groups) {
@@ -1117,20 +1079,6 @@ std::string WavinAHC9000::get_yaml_child_lock_chunk(uint8_t start, uint8_t count
   return build_child_lock_yaml_for(this, slice);
 }
 
-std::string WavinAHC9000::get_yaml_rssi_element_chunk(uint8_t start, uint8_t count) const {
-  if (start >= this->yaml_active_channels_.size() || count == 0) return std::string("");
-  uint8_t end = (uint8_t) std::min<size_t>(this->yaml_active_channels_.size(), (size_t) start + count);
-  std::vector<uint8_t> chs(this->yaml_active_channels_.begin() + start, this->yaml_active_channels_.begin() + end);
-  return build_rssi_element_yaml_for(this, chs);
-}
-
-std::string WavinAHC9000::get_yaml_rssi_controller_chunk(uint8_t start, uint8_t count) const {
-  if (start >= this->yaml_active_channels_.size() || count == 0) return std::string("");
-  uint8_t end = (uint8_t) std::min<size_t>(this->yaml_active_channels_.size(), (size_t) start + count);
-  std::vector<uint8_t> chs(this->yaml_active_channels_.begin() + start, this->yaml_active_channels_.begin() + end);
-  return build_rssi_controller_yaml_for(this, chs);
-}
-
 void WavinAHC9000::publish_updates() {
   ESP_LOGV(TAG, "Publishing updates: %u single climates, %u group climates",
            (unsigned) this->single_ch_climates_.size(), (unsigned) this->group_climates_.size());
@@ -1203,28 +1151,6 @@ void WavinAHC9000::publish_updates() {
     }
   }
 
-  // Publish RSSI sensors
-  for (auto &kv : this->rssi_element_sensors_) {
-    uint8_t ch = kv.first;
-    auto *s = kv.second;
-    if (!s) continue;
-    auto it = this->channels_.find(ch);
-    if (it != this->channels_.end()) {
-      float v = it->second.rssi_element_dbm;
-      if (!std::isnan(v)) s->publish_state(v);
-    }
-  }
-  for (auto &kv : this->rssi_controller_sensors_) {
-    uint8_t ch = kv.first;
-    auto *s = kv.second;
-    if (!s) continue;
-    auto it = this->channels_.find(ch);
-    if (it != this->channels_.end()) {
-      float v = it->second.rssi_controller_dbm;
-      if (!std::isnan(v)) s->publish_state(v);
-    }
-  }
-
   // YAML readiness: ready if we have discovered at least one active channel and have completed at least one element read for all of them.
   {
     uint16_t required = this->yaml_primary_present_mask_;
@@ -1262,15 +1188,6 @@ climate::ClimateMode WavinAHC9000::get_channel_mode(uint8_t channel) const {
 climate::ClimateAction WavinAHC9000::get_channel_action(uint8_t channel) const {
   auto it = this->channels_.find(channel);
   return it == this->channels_.end() ? climate::CLIMATE_ACTION_OFF : it->second.action;
-}
-
-float WavinAHC9000::get_channel_rssi_element(uint8_t channel) const {
-  auto it = this->channels_.find(channel);
-  return it == this->channels_.end() ? NAN : it->second.rssi_element_dbm;
-}
-float WavinAHC9000::get_channel_rssi_controller(uint8_t channel) const {
-  auto it = this->channels_.find(channel);
-  return it == this->channels_.end() ? NAN : it->second.rssi_controller_dbm;
 }
 
 void WavinZoneClimate::dump_config() { LOG_CLIMATE("  ", "Wavin Zone Climate (minimal)", this); }
