@@ -1,0 +1,384 @@
+# ============================================================
+# Wavin AHC Controller - Device Specific Configuration
+# ============================================================
+
+substitutions:
+  device: wavinahc
+  device_friendly_name: "Wavin Controller"
+  device_description: "ESPHome base config for Wavin devices"
+  log_level: INFO
+
+  room_1: "Værksted"
+  room_2: "Victor"
+  room_3: "Gæstebadeværelse"
+  room_4: "Bryggers"
+  room_5: "Kontor"
+  room_6: "Køkken"
+  room_7: "Køkken Alrum"
+  room_8: "Badeværelse"
+  room_9: "Soveværelse"
+  room_10: "Stue"
+  room_11: "Emil"  
+
+# Import base configuration
+packages:
+  base: !include common/base_wavin.yaml
+
+# ----------------------
+# External Components
+# ----------------------
+external_components:
+  - source: github://heinekmadsen/esphome_components
+    components: [wavinahc9000v3]
+    refresh: 0s
+
+# ----------------------
+# UART Configuration
+# ----------------------
+uart:
+  id: uart_wavin
+  tx_pin: GPIO14
+  rx_pin: GPIO13
+  baud_rate: 38400
+  stop_bits: 1
+  parity: NONE
+
+# ----------------------
+# Wavin AHC9000 Component
+# ----------------------
+wavinahc9000v3:
+  id: wavin
+  uart_id: uart_wavin
+  flow_control_pin: GPIO26
+  update_interval: 10s
+  allow_mode_writes: true
+  poll_channels_per_cycle: 1
+
+  channel_01_friendly_name: ${room_1}
+  channel_02_friendly_name: ${room_2}
+  channel_03_friendly_name: ${room_3}
+  channel_04_friendly_name: ${room_4}
+  channel_05_friendly_name: ${room_5}
+  channel_06_friendly_name: ${room_6}
+  channel_07_friendly_name: ${room_7}
+  channel_08_friendly_name: ${room_8}
+  channel_09_friendly_name: ${room_9}
+  channel_10_friendly_name: ${room_10}
+  channel_11_friendly_name: ${room_11}
+
+# ----------------------
+# Climate Entities
+# ----------------------
+
+climate:
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_1} Termostat"
+    channel: 1
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_2} Termostat"
+    channel: 2
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_3} Termostat"
+    channel: 3
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_4} Termostat"
+    channel: 4
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_5} Termostat"
+    channel: 5
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_6} Termostat"
+    channel: 6
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_7} Termostat"
+    channel: 7
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_8} Termostat"
+    channel: 8
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_9} Termostat"
+    channel: 9
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_10} Termostat"
+    channel: 10
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_11} Termostat"
+    channel: 11
+
+
+# ----------------------
+# Wavin Sensors
+# ----------------------
+
+sensor:
+  # Ch.1
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_1} Batteri"
+    channel: 1
+    type: battery
+    entity_category: diagnostic
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_1} Temperatur"
+    channel: 1
+    type: temperature
+
+  # Ch.2
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_2} Batteri"
+    channel: 2
+    type: battery
+    entity_category: diagnostic
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_2} Temperatur"
+    channel: 2
+    type: temperature
+
+  # Ch.3
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_3} Batteri"
+    channel: 3
+    type: battery
+    entity_category: diagnostic
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_3} Temperatur"
+    channel: 3
+    type: temperature
+
+  # Ch.4
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_4} Batteri"
+    channel: 4
+    type: battery
+    entity_category: diagnostic
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_4} Temperatur"
+    channel: 4
+    type: temperature
+
+  # Ch.5
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_5} Batteri"
+    channel: 5
+    type: battery
+    entity_category: diagnostic
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_5} Temperatur"
+    channel: 5
+    type: temperature
+
+  # Ch.6
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_6} Batteri"
+    channel: 6
+    type: battery
+    entity_category: diagnostic
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_6} Temperatur"
+    channel: 6
+    type: temperature
+
+  # Ch.7
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_7} Batteri"
+    channel: 7
+    type: battery
+    entity_category: diagnostic
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_7} Temperatur"
+    channel: 7
+    type: temperature
+
+  # Ch.8
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_8} Batteri"
+    channel: 8
+    type: battery
+    entity_category: diagnostic
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_8} Temperatur"
+    channel: 8
+    type: temperature
+
+  # Ch.9
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_9} Batteri"
+    channel: 9
+    type: battery
+    entity_category: diagnostic
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_9} Temperatur"
+    channel: 9
+    type: temperature
+
+  # Ch.10
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_10} Batteri"
+    channel: 10
+    type: battery
+    entity_category: diagnostic
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_10} Temperatur"
+    channel: 10
+    type: temperature
+
+  # Ch.11
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_11} Batteri"
+    channel: 11
+    type: battery
+    entity_category: diagnostic
+
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_11} Temperatur"
+    channel: 11
+    type: temperature
+
+
+# ----------------------
+# Wavin Switches (Lås)
+# ----------------------
+
+switch:
+  # Ch.1
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_1} Lås"
+    channel: 1
+    type: child_lock
+    entity_category: config
+
+  # Ch.2
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_2} Lås"
+    channel: 2
+    type: child_lock
+    entity_category: config
+
+  # Ch.3
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_3} Lås"
+    channel: 3
+    type: child_lock
+    entity_category: config
+
+  # Ch.4
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_4} Lås"
+    channel: 4
+    type: child_lock
+    entity_category: config
+
+  # Ch.5
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_5} Lås"
+    channel: 5
+    type: child_lock
+    entity_category: config
+
+  # Ch.6
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_6} Lås"
+    channel: 6
+    type: child_lock
+    entity_category: config
+
+  # Ch.7
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_7} Lås"
+    channel: 7
+    type: child_lock
+    entity_category: config
+
+  # Ch.8
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_8} Lås"
+    channel: 8
+    type: child_lock
+    entity_category: config
+
+  # Ch.9
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_9} Lås"
+    channel: 9
+    type: child_lock
+    entity_category: config
+
+  # Ch.10
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_10} Lås"
+    channel: 10
+    type: child_lock
+    entity_category: config
+
+  # Ch.11
+  - platform: wavinahc9000v3
+    wavinahc9000v3_id: wavin
+    name: "${room_11} Lås"
+    channel: 11
+    type: child_lock
+    entity_category: config
+
+
+
